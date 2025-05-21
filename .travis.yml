@@ -1,0 +1,20 @@
+language: cpp
+os: linux
+
+matrix:
+  include:
+    - compiler: gcc
+      env: CXX=g++ CC=gcc
+    - compiler: clang
+      env: CXX=clang++ CC=clang
+
+before_install:
+  - sudo apt-get update -qq
+  - sudo apt-get install -y cmake
+
+script:
+  - mkdir -p build && cd build
+  - cmake .. -DCMAKE_BUILD_TYPE=Release
+  - cmake --build . -- -j$(nproc)
+
+  - ctest --output-on-failure
