@@ -1,6 +1,27 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-    <Product Codepage="1251">
-        <!-- Остальное содержимое будет сгенерировано автоматически -->
+    <Product 
+        Id="*" 
+        Name="$(var.PackageName)" 
+        Version="$(var.PackageVersion)"
+        Manufacturer="$(var.PackageVendor)" 
+        Language="1033"
+        Codepage="1251"
+        UpgradeCode="$(var.UpgradeCode)">
+        
+        <Package InstallerVersion="200" Compressed="yes"/>
+        <MediaTemplate EmbedCab="yes"/>
+        
+        <Feature Id="ProductFeature" Title="Main Feature" Level="1">
+            <ComponentRef Id="ApplicationFiles"/>
+        </Feature>
     </Product>
+    
+    <Fragment>
+        <Directory Id="TARGETDIR" Name="SourceDir">
+            <Directory Id="ProgramFilesFolder">
+                <Directory Id="INSTALLDIR" Name=""/>
+            </Directory>
+        </Directory>
+    </Fragment>
 </Wix>
