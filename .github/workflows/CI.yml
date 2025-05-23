@@ -3,7 +3,7 @@ name: Create Release
 on:
   push:
     tags:
-      - 'v*' # Запускать workflow при создании тега
+      - 'v*' # Запускать workflow при создании тега, начинающегося с 'v'
 
 jobs:
   build:
@@ -17,7 +17,7 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Verify files exist
+    - name: Verify required files
       shell: bash
       run: |
         if [ ! -f LICENSE ] || [ ! -f License.rtf ]; then
@@ -35,7 +35,7 @@ jobs:
           make \
           libfmt-dev \
           rpm \
-          wixl
+          dpkg
 
     - name: Install dependencies (Windows)
       if: matrix.os == 'windows-latest'
@@ -65,42 +65,56 @@ jobs:
         cmake --build build --config ${{ matrix.build_type }} --parallel 4
 
     - name: Generate packages
-  shell: bash
-  run: |
-    cd build
-    if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
-      cpack -G "DEB;RPM"
-      ls -la *.deb *.rpm || echo "No package files generated"
-    elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-      cpack -G WIX -C ${{ matrix.build_type }}
-      ls -la *.msi || echo "No MSI file generated"
-    elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
-      cpack -G DragNDrop
-      ls -la *.dmg || echo "No DMG file generated"
-    fi
+      shell: bash
+      run: |
+        cd build
+        if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+          # Генерация DEB и RPM пакетов
+          cpack -G "DEB;RPM"
+          echo "Generated packages:"
+          ls -la *.deb *.rpm || echo "No Linux packages generated"
+        elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+          # Генерация MSI пакета
+          cpack -G WIX -C ${{ matrix.build_type }}
+          echo "Generated packages:"
+          ls -la *.msi || echo "No Windows package generated"
+        else
+          # Генерация DMG пакета для macOS
+          cpack -G DragNDrop
+          echo "Generated packages:"
+          ls -la *.dmg || echo "No macOS package generated"
+        fi
 
     - name: Create source archives
       shell: bash
       run: |
-        git archive --format=zip --output=source-code.zip HEAD
-        git archive --format=tar.gz --output=source-code.tar.gz HEAD
+        git archive --format=zip --output=build/source-code.zip HEAD
+        git archive --format=tar.gz --output=build/source-code.tar.gz HEAD
+        echo "Source archives:"
+        ls -la build/source-code.*
 
-     - name: Check GitHub token permissions
-  	run: |
-    		echo "GITHUB_TOKEN permissions:"
-    		curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-    	-	H "Accept: application/vnd.github.v3+json" \
-    		https://api.github.com/repos/${{ github.repository }}/				collaborators/${{ github.actor }}/permission | jq .
-    
-    
-    - name: Create Release
+    - name: Verify artifacts
+      shell: bash
+      run: |
+        echo "Artifacts in build directory:"
+        ls -la build/*
+
+    - name: Create GitHub Release
       id: create_release
       uses: softprops/action-gh-release@v1
       if: startsWith(github.ref, 'refs/tags/v')
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ github.ref }}
         name: Release ${{ github.ref }}
-        body: Automated release for ${{ github.ref }}
+        body: |
+          Automated release for ${{ github.ref }}
+          Packages included:
+          - Linux: DEB and RPM
+          - Windows: MSI
+          - macOS: DMG
+          - Source archives
         draft: false
         prerelease: false
         files: |
@@ -108,5 +122,10 @@ jobs:
           build/*.rpm
           build/*.msi
           build/*.dmg
-          source-code.zip
-          source-code.tar.gz
+          build/source-code.zip
+          build/source-code.tar.gz
+
+    - name: Verify release creation
+      if: always() && steps.create_release.outputs.id
+      run: |
+        echo "Release created successfully with ID: ${{ steps.create_release.outputs.id }}"
