@@ -88,14 +88,18 @@ jobs:
         cd build
         cmake --install . --prefix=install_dir
         $env:Path += ";C:\wix"
-        cpack -G WIX -C Release -DCPACK_WIX_ROOT=C:/wix -DCPACK_WIX_CULTURES="en-US" -DCPACK_WIX_PRODUCT_GUID="D9FD9F0A-0D7B-4B1F-8E7A-1A3F4B2C5D6E" -DCPACK_WIX_UPGRADE_GUID="3A4B5C6D-7E8F-9A0B-1C2D-3E4F5A6B7C8D" --debug --verbose
+        cpack -G WIX -C Release `
+          -DCPACK_WIX_ROOT=C:/wix `
+          -DCPACK_WIX_PRODUCT_GUID="D9FD9F0A-0D7B-4B1F-8E7A-1A3F4B2C5D6E" `
+          -DCPACK_WIX_UPGRADE_GUID="12345678-1234-1234-1234-123456789012" `
+          -DCPACK_WIX_TEMPLATE="$env:GITHUB_WORKSPACE/WixTemplate.wxs" `
+          --debug --verbose
         if ($LASTEXITCODE -ne 0) {
           Get-Content _CPack_Packages/win64/WIX/wix.log
           exit 1
         }
         mkdir packages
         cp *.msi packages/
-
     - name: Generate packages (Linux)
       if: matrix.os == 'ubuntu-latest'
       shell: bash
