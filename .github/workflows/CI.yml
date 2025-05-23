@@ -65,16 +65,19 @@ jobs:
         cmake --build build --config ${{ matrix.build_type }} --parallel 4
 
     - name: Generate packages
-      shell: bash
-      run: |
-        cd build
-        if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
-          cpack -G "DEB;RPM"
-        elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-          cpack -G WIX -C ${{ matrix.build_type }}
-        else
-          cpack -G DragNDrop
-        fi
+  shell: bash
+  run: |
+    cd build
+    if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+      cpack -G "DEB;RPM"
+      ls -la *.deb *.rpm || echo "No package files generated"
+    elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+      cpack -G WIX -C ${{ matrix.build_type }}
+      ls -la *.msi || echo "No MSI file generated"
+    elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
+      cpack -G DragNDrop
+      ls -la *.dmg || echo "No DMG file generated"
+    fi
 
     - name: Create source archives
       shell: bash
@@ -82,6 +85,14 @@ jobs:
         git archive --format=zip --output=source-code.zip HEAD
         git archive --format=tar.gz --output=source-code.tar.gz HEAD
 
+     - name: Check GitHub token permissions
+  	run: |
+    		echo "GITHUB_TOKEN permissions:"
+    		curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+    	-	H "Accept: application/vnd.github.v3+json" \
+    		https://api.github.com/repos/${{ github.repository }}/				collaborators/${{ github.actor }}/permission | jq .
+    
+    
     - name: Create Release
       id: create_release
       uses: softprops/action-gh-release@v1
