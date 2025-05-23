@@ -39,12 +39,23 @@ jobs:
       with:
         vs-version: '17.0'
 
-    - name: Install WiX (Windows)
+    - name: Install WiX Toolset (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        choco install wixtoolset -y --no-progress
-        echo "C:\Program Files (x86)\WiX Toolset v3.11\bin" >> $GITHUB_PATH
-        heat.exe --help || echo "WiX installation verification failed"
+        # Проверяем, установлен ли уже WiX
+        if (!(Test-Path "C:\Program Files (x86)\WiX Toolset v3.11\bin\heat.exe")) {
+          # Устанавливаем WiX через Chocolatey (без указания версии)
+          choco install wixtoolset -y --no-progress
+        }
+        # Добавляем путь к WiX в PATH
+        $wixPath = "C:\Program Files (x86)\WiX Toolset v3.11\bin"
+        echo "$wixPath" >> $env:GITHUB_PATH
+        # Проверяем доступность candle.exe вместо heat.exe
+        & "$wixPath\candle.exe" -? | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+          Write-Error "WiX installation verification failed"
+          exit 1
+        }
 
     - name: Install dependencies (macOS)
       if: matrix.os == 'macos-latest'
@@ -74,25 +85,24 @@ jobs:
           cpack -G "DEB;RPM" || (echo "Linux package generation failed" && exit 1)
           cp *.deb *.rpm packages/ || true
         elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+          # Генерируем MSI с подробным выводом
           cpack -V -G "WIX" --debug || (echo "Windows package generation failed" && exit 1)
-          cp *.msi packages/ || (echo "No MSI file generated" && exit 1)
+          # Копируем все MSI файлы
+          shopt -s nullglob
+          for msi in *.msi; do
+            echo "Found MSI file: $msi"
+            cp "$msi" packages/
+          done
+          # Проверяем, что хотя бы один MSI файл был создан
+          if [ -z "$(ls -A packages/*.msi 2>/dev/null)" ]; then
+            echo "::error::No MSI files were generated!"
+            echo "Contents of build directory:"
+            ls -la
+            exit 1
+          fi
         else
           cpack -G "DragNDrop" || (echo "macOS package generation failed" && exit 1)
           cp *.dmg packages/ || true
-        fi
-
-    - name: Verify MSI file
-      if: matrix.os == 'windows-latest'
-      shell: bash
-      run: |
-        if ls build/packages/*.msi 1> /dev/null 2>&1; then
-          echo "MSI file found:"
-          ls -la build/packages/*.msi
-        else
-          echo "::error::MSI file was not generated!"
-          echo "Contents of packages directory:"
-          ls -la build/packages/
-          exit 1
         fi
 
     - name: Create source archives
