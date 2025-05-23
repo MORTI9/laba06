@@ -20,9 +20,10 @@ endif()
 # Настройки для Windows
 if(WIN32)
     set(CPACK_GENERATOR "WIX")
-    set(CPACK_WIX_PRODUCT_GUID "YOUR-WINDOWS-GUID-HERE") # Замените на реальный GUID
-    set(CPACK_WIX_UPGRADE_GUID "YOUR-UPGRADE-GUID-HERE") # Замените на реальный GUID
+    set(CPACK_WIX_PRODUCT_GUID "PUT-YOUR-GUID-HERE") # Замените!
+    set(CPACK_WIX_UPGRADE_GUID "PUT-UPGRADE-GUID-HERE") # Замените!
     set(CPACK_WIX_LICENSE_RTF "${CMAKE_CURRENT_SOURCE_DIR}/License.rtf")
+    set(CPACK_WIX_CULTURES "en-US")
 endif()
 
 # Настройки для macOS
