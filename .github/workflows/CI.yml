@@ -42,8 +42,9 @@ jobs:
     - name: Install WiX (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        choco install wix --version 3.11.2 -y
+        choco install wixtoolset -y --no-progress
         echo "C:\Program Files (x86)\WiX Toolset v3.11\bin" >> $GITHUB_PATH
+        heat.exe --help || echo "WiX installation verification failed"
 
     - name: Install dependencies (macOS)
       if: matrix.os == 'macos-latest'
@@ -84,8 +85,12 @@ jobs:
       if: matrix.os == 'windows-latest'
       shell: bash
       run: |
-        if [ ! -f build/packages/*.msi ]; then
+        if ls build/packages/*.msi 1> /dev/null 2>&1; then
+          echo "MSI file found:"
+          ls -la build/packages/*.msi
+        else
           echo "::error::MSI file was not generated!"
+          echo "Contents of packages directory:"
           ls -la build/packages/
           exit 1
         fi
