@@ -1,95 +1,107 @@
-name: CMake Build
+name: Create Release
 
 on:
   push:
-    branches: [master]
-    tags: ['*']  # Добавляем триггер на тэги
-  pull_request:
-    branches: [master]
+    tags:
+      - 'v*' # Запускать workflow при создании тэга, начинающегося с 'v'
 
 jobs:
   build:
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-        build_type: [Release]
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
-
+    runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-    - name: Install dependencies (Linux)
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        sudo apt-get update -qq
-        sudo apt-get install -y --no-install-recommends \
-          cmake \
-          g++ \
-          make \
-          libfmt-dev \
-          rpm
+      - name: Build binaries
+        run: |
+          # Команды для сборки бинарных файлов
+          make build-linux
+          make build-windows
+          make build-macos
 
-    - name: Install dependencies (Windows)
-      if: matrix.os == 'windows-latest'
-      uses: microsoft/setup-msbuild@v2
-      with:
-        vs-version: '17.0'
+      - name: Create source archives
+        run: |
+          git archive --format=zip --output=source-code.zip HEAD
+          git archive --format=tar.gz --output=source-code.tar.gz HEAD
 
-    - name: Configure Project
-      shell: bash
-      run: |
-        mkdir -p build
-        if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-          cmake -S . -B build -G "Visual Studio 17 2022" -A x64
-        else
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-        fi
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: false
+          prerelease: false
 
-    - name: Build Project
-      shell: bash
-      run: |
-        if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-          cmake --build build --config ${{ matrix.build_type }} --parallel 4
-        else
-          cmake --build build -- -j$(nproc)
-        fi
+      - name: Upload Release Assets
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./path/to/your/binaries/solver-pckg-0.1.0.1-Darwin.dmg
+          asset_name: solver-pckg-0.1.0.1-Darwin.dmg
+          asset_content_type: application/octet-stream
 
-    - name: Run tests
-      if: matrix.os == 'ubuntu-latest'
-      run: |
-        cd build
-        ctest --output-on-failure
+      - name: Upload Release Assets
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./path/to/your/binaries/solver-pckg-0.1.0.1-Linux.deb
+          asset_name: solver-pckg-0.1.0.1-Linux.deb
+          asset_content_type: application/octet-stream
 
-    - name: Create Package
-      if: startsWith(github.ref, 'refs/tags/')
-      shell: bash
-      run: |
-        cd build
-        if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
-          cpack -G DEB
-          cpack -G RPM
-        elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-          cpack -G WIX
-        elif [[ "${{ matrix.os }}" == "macos-latest" ]]; then
-          cpack -G DragNDrop
-        fi
+      - name: Upload Release Assets
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./path/to/your/binaries/solver-pckg-0.1.0.1-Linux.rpm
+          asset_name: solver-pckg-0.1.0.1-Linux.rpm
+          asset_content_type: application/octet-stream
 
-    - name: Upload artifacts
-      if: github.event_name == 'push'
-      uses: actions/upload-artifact@v4
-      with:
-        name: build-${{ matrix.os }}-${{ matrix.build_type }}
-        path: build/
-        retention-days: 3
+      - name: Upload Release Assets
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./path/to/your/binaries/solver-pckg-0.1.0.1-win64.exe
+          asset_name: solver-pckg-0.1.0.1-win64.exe
+          asset_content_type: application/octet-stream
 
-    - name: Upload Release Assets
-      if: startsWith(github.ref, 'refs/tags/')
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ github.event.release.upload_url }}
-        asset_path: build/*.deb, build/*.rpm, build/*.msi, build/*.dmg
-        asset_name: ${{ github.event.release.tag_name }}-${{ matrix.os }}.package
-        asset_content_type: application/octet-stream
+      - name: Upload Release Assets
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./path/to/your/binaries/solver-pckg-0.1.0.1-win64.msi
+          asset_name: solver-pckg-0.1.0.1-win64.msi
+          asset_content_type: application/octet-stream
+
+      - name: Upload Release Assets
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./source-code.zip
+          asset_name: source-code.zip
+          asset_content_type: application/zip
+
+      - name: Upload Release Assets
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./source-code.tar.gz
+          asset_name: source-code.tar.gz
+          asset_content_type: application/gzip
+

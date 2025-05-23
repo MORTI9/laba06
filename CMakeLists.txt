@@ -25,3 +25,7 @@ else()
 endif()
 
 include(CPack)
+<<<<<<< HEAD
+=======
+
+>>>>>>> 9596135 (1)
