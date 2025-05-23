@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10...3.27)
 project(MyProject VERSION 1.0.0 LANGUAGES CXX)
 
-# Общие настройки CPack
+
 set(CPACK_PACKAGE_NAME "solver")
 set(CPACK_PACKAGE_VENDOR "YourCompany")
 set(CPACK_PACKAGE_CONTACT "contact@yourcompany.com")
@@ -9,7 +9,7 @@ set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/License.rtf")
 set(CPACK_VERBATIM_VARIABLES YES)
 
-# Настройки для Linux
+
 if(UNIX AND NOT APPLE)
     set(CPACK_GENERATOR "DEB;RPM")
     set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Maintainer <maintainer@example.com>")
@@ -17,7 +17,7 @@ if(UNIX AND NOT APPLE)
     set(CPACK_RPM_PACKAGE_REQUIRES "libfmt-devel")
 endif()
 
-# Настройки для Windows
+
 if(WIN32)
     set(CPACK_GENERATOR "WIX")
     set(CPACK_WIX_PRODUCT_GUID "PUT-YOUR-GUID-HERE") # Замените!
@@ -26,7 +26,7 @@ if(WIN32)
     set(CPACK_WIX_CULTURES "en-US")
 endif()
 
-# Настройки для macOS
+
 if(APPLE)
     set(CPACK_GENERATOR "DragNDrop")
     set(CPACK_DMG_VOLUME_NAME "Solver")
