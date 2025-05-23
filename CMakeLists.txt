@@ -10,14 +10,6 @@ set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_CURRENT_SOURCE_DIR}/License.rtf")
 set(CPACK_VERBATIM_VARIABLES YES)
 
 
-if(UNIX AND NOT APPLE)
-    set(CPACK_GENERATOR "DEB;RPM")
-    set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Maintainer <maintainer@example.com>")
-    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libfmt-dev")
-    set(CPACK_RPM_PACKAGE_REQUIRES "libfmt-devel")
-endif()
-
-
 if(WIN32)
     set(CPACK_GENERATOR "WIX")
     set(CPACK_WIX_PRODUCT_GUID "D9FD9F0A-0D7B-4B1F-8E7A-1A3F4B2C5D6E")
@@ -26,6 +18,19 @@ if(WIN32)
     set(CPACK_WIX_CULTURES "en-US")
     set(CPACK_WIX_ARCHITECTURE "x64")
     set(CPACK_WIX_PRODUCT_ICON "${CMAKE_CURRENT_SOURCE_DIR}/assets/icon.ico")
+    
+    
+    if(DEFINED WIX_ROOT)
+        set(CPACK_WIX_ROOT "${WIX_ROOT}")
+    endif()
+endif()
+
+
+if(UNIX AND NOT APPLE)
+    set(CPACK_GENERATOR "DEB;RPM")
+    set(CPACK_DEBIAN_PACKAGE_MAINTAINER "Maintainer <maintainer@example.com>")
+    set(CPACK_DEBIAN_PACKAGE_DEPENDS "libfmt-dev")
+    set(CPACK_RPM_PACKAGE_REQUIRES "libfmt-devel")
 endif()
 
 

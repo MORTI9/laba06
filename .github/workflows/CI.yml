@@ -8,6 +8,9 @@ on:
 permissions:
   contents: write
 
+env:
+  WIX_VERSION: 3.11.2
+
 jobs:
   build:
     strategy:
@@ -46,30 +49,39 @@ jobs:
       with:
         vs-version: '17.0'
 
-    - name: Install WiX (Windows)
+    - name: Install WiX Toolset
       if: matrix.os == 'windows-latest'
       run: |
-        choco install wixtoolset -y --no-progress --ignore-package-exit-codes
+        Invoke-WebRequest -Uri "https://github.com/wixtoolset/wix3/releases/download/wix3112rtm/wix311-binaries.zip" -OutFile "wix311-binaries.zip"
+        Expand-Archive -Path "wix311-binaries.zip" -DestinationPath "wix"
+        echo "C:\wix" | Out-File -FilePath $env:GITHUB_PATH -Append
 
-    - name: Install dependencies (macOS)
-      if: matrix.os == 'macos-latest'
-      run: |
-        brew update
-        brew install cmake fmt imagemagick
-
-    - name: Configure project
+    - name: Configure project (Windows)
+      if: matrix.os == 'windows-latest'
       shell: bash
       run: |
-        if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release
-        else
-          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
-        fi
+        cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release -DWIX_ROOT=/c/wix
+
+    - name: Configure project (Others)
+      if: matrix.os != 'windows-latest'
+      shell: bash
+      run: |
+        cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 
     - name: Build project
       shell: bash
       run: |
         cmake --build build --config Release --parallel 4
+
+    - name: Generate packages (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: bash
+      run: |
+        cd build
+        cmake --install . --prefix=install_dir
+        cpack -G WIX -C Release -DCPACK_WIX_ROOT=/c/wix
+        mkdir -p packages
+        cp *.msi packages/
 
     - name: Generate packages (Linux)
       if: matrix.os == 'ubuntu-latest'
@@ -80,24 +92,14 @@ jobs:
         mkdir -p packages
         cp *.deb *.rpm packages/
 
-    - name: Generate packages (Windows)
-      if: matrix.os == 'windows-latest'
-      shell: bash
-      run: |
-        cd build
-        cmake --install . --prefix=install_dir
-        cpack -G WIX -C Release || echo "MSI generation completed with warnings"
-        mkdir -p packages
-        cp *.msi packages/ || true
-
     - name: Generate packages (macOS)
       if: matrix.os == 'macos-latest'
       shell: bash
       run: |
         cd build
-        cpack -G "DragNDrop" || echo "DMG generation completed with warnings"
+        cpack -G "DragNDrop"
         mkdir -p packages
-        cp *.dmg packages/ || true
+        cp *.dmg packages/
 
     - name: Create source archives
       shell: bash
