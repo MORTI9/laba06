@@ -17,12 +17,22 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Verify LICENSE exists
+    - name: Verify LICENSE exists (Linux/macOS)
+      if: matrix.os != 'windows-latest'
       run: |
         if [ ! -f LICENSE ]; then
-          echo "ERROR: LICENSE file is required!" >&2
+          echo "::error::LICENSE file is required!"
           exit 1
         fi
+
+    - name: Verify LICENSE exists (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: pwsh
+      run: |
+        if (!(Test-Path -Path LICENSE)) {
+          Write-Error "LICENSE file is required!"
+          exit 1
+        }
 
     - name: Install dependencies (Linux)
       if: matrix.os == 'ubuntu-latest'
@@ -63,11 +73,13 @@ jobs:
         cmake --build build --config ${{ matrix.build_type }} --parallel 4
 
     - name: Generate packages
+      shell: bash
       run: |
         cd build
         cpack -G ${{ matrix.os == 'ubuntu-latest' && 'DEB;RPM' || matrix.os == 'windows-latest' && 'WIX' || matrix.os == 'macos-latest' && 'DragNDrop' }}
 
     - name: Create source archives
+      shell: bash
       run: |
         git archive --format=zip --output=source-code.zip HEAD
         git archive --format=tar.gz --output=source-code.tar.gz HEAD
