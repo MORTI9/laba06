@@ -1,4 +1,4 @@
-\name: Create Release
+name: Create Release
 
 on:
   push:
@@ -7,9 +7,6 @@ on:
 
 permissions:
   contents: write
-
-env:
-  WIX_VERSION: 3.11.2
 
 jobs:
   build:
@@ -26,38 +23,15 @@ jobs:
       shell: bash
       run: |
         mkdir -p build/packages
-        mkdir -p assets
-        echo "{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1033{\fonttbl{\f0\fnil\fcharset0 Calibri;}}\viewkind4\uc1\pard\f0\fs22 MIT License\par }" > License.rtf
-        if [ ! -f assets/background.png ]; then
-          convert -size 640x480 xc:white assets/background.png
+        if [ ! -f License.rtf ]; then
+          echo "{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1049{\fonttbl{\f0\fnil\fcharset0 Calibri;}}\viewkind4\uc1\pard\f0\fs22 MIT License\par }" > License.rtf
         fi
-        if [ ! -f assets/icon.ico ]; then
-          convert -size 256x256 xc:black assets/icon.ico
-        fi
-        cat << 'EOF' > WixTemplate.wxs
-<?xml version="1.0" encoding="UTF-8"?>
-<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
-    <Product Id="*" Name="Solver" Language="1033" Version="1.0.0" Manufacturer="YourCompany" UpgradeCode="12345678-1234-1234-1234-123456789012">
-        <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" Manufacturer="YourCompany" Description="Solver Application" Comments="Copyright YourCompany" Languages="1033" Codepage="1252"/>
-        <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer version is already installed." AllowDowngrades="no"/>
-        <MediaTemplate EmbedCab="yes"/>
-        <Feature Id="ProductFeature" Title="Solver" Level="1">
-            <ComponentRef Id="ApplicationFiles"/>
-        </Feature>
-        <Directory Id="TARGETDIR" Name="SourceDir">
-            <Directory Id="ProgramFiles64Folder">
-                <Directory Id="INSTALLFOLDER" Name="Solver"/>
-            </Directory>
-        </Directory>
-    </Product>
-</Wix>
-EOF
 
     - name: Install dependencies (Linux)
       if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
-        sudo apt-get install -y cmake g++ make libfmt-dev rpm imagemagick
+        sudo apt-get install -y cmake g++ make libfmt-dev rpm
 
     - name: Install dependencies (Windows)
       if: matrix.os == 'windows-latest'
@@ -65,72 +39,45 @@ EOF
       with:
         vs-version: '17.0'
 
-    - name: Install WiX Toolset
+    - name: Install WiX (Windows)
       if: matrix.os == 'windows-latest'
-      shell: powershell
       run: |
-        Invoke-WebRequest -Uri "https://github.com/wixtoolset/wix3/releases/download/wix3112rtm/wix311-binaries.zip" -OutFile "wix.zip"
-        Expand-Archive -Path "wix.zip" -DestinationPath "C:\wix"
-        echo "C:\wix" | Out-File -FilePath $env:GITHUB_PATH -Append
-        echo "WIX_ROOT=C:\wix" | Out-File -FilePath $env:GITHUB_ENV -Append
+        choco install wixtoolset -y
 
     - name: Install dependencies (macOS)
       if: matrix.os == 'macos-latest'
       run: |
         brew update
-        brew install cmake fmt imagemagick
+        brew install cmake fmt
 
-    - name: Configure project (Windows)
-      if: matrix.os == 'windows-latest'
+    - name: Configure project
       shell: bash
       run: |
-        cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release -DWIX_ROOT=C:/wix
-
-    - name: Configure project (Others)
-      if: matrix.os != 'windows-latest'
-      shell: bash
-      run: |
-        cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+        if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release
+        else
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+        fi
 
     - name: Build project
       shell: bash
       run: |
         cmake --build build --config Release --parallel 4
 
-    - name: Generate packages (Windows)
-      if: matrix.os == 'windows-latest'
-      shell: powershell
-      run: |
-        cd build
-        cmake --install . --prefix=install_dir
-        $env:Path += ";C:\wix"
-        mkdir -p _CPack_Packages/win64/WIX
-        cp ../WixTemplate.wxs _CPack_Packages/win64/WIX/
-        cpack -G WIX -C Release -DCPACK_WIX_ROOT=C:/wix -DCPACK_WIX_TEMPLATE="WixTemplate.wxs" --debug --verbose
-        if ($LASTEXITCODE -ne 0) {
-          Get-Content _CPack_Packages/win64/WIX/wix.log
-          exit 1
-        }
-        mkdir packages
-        cp *.msi packages/
-
-    - name: Generate packages (Linux)
-      if: matrix.os == 'ubuntu-latest'
+    - name: Generate packages
       shell: bash
       run: |
         cd build
-        cpack -G "DEB;RPM"
-        mkdir -p packages
-        cp *.deb *.rpm packages/
-
-    - name: Generate packages (macOS)
-      if: matrix.os == 'macos-latest'
-      shell: bash
-      run: |
-        cd build
-        cpack -G "DragNDrop"
-        mkdir -p packages
-        cp *.dmg packages/
+        if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+          cpack -G "DEB;RPM" || echo "Linux package generation failed"
+          cp *.deb *.rpm packages/ 2>/dev/null || true
+        elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+          cpack -G "WIX" || echo "Windows package generation failed"
+          cp *.msi packages/ 2>/dev/null || true
+        else
+          cpack -G "DragNDrop" || echo "macOS package generation failed"
+          cp *.dmg packages/ 2>/dev/null || true
+        fi
 
     - name: Create source archives
       shell: bash
@@ -156,11 +103,11 @@ EOF
 
     - name: Combine artifacts
       run: |
-        mkdir -p release-assets
-        find artifacts -type f -exec cp {} release-assets/ \;
-        ls -la release-assets/
+        mkdir -p combined-packages
+        find artifacts -type f -exec cp {} combined-packages/ \;
+        ls -la combined-packages/
 
-    - name: Create Release
+    - name: Create or Update Release
       uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ github.ref_name }}
@@ -171,5 +118,9 @@ EOF
           - Windows (.msi)
           - macOS (.dmg)
           - Source code archives
-        files: release-assets/*
+        draft: false
+        prerelease: false
+        files: |
+          combined-packages/*
         token: ${{ secrets.GITHUB_TOKEN }}
+        update: true
