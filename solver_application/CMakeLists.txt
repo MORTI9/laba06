@@ -27,3 +27,7 @@ target_link_libraries(solver PRIVATE
     formatter_ex_lib
     solver_lib
 )
+
+install(TARGETS solver 
+        RUNTIME DESTINATION bin
+        BUNDLE DESTINATION bin)
