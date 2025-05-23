@@ -42,7 +42,8 @@ jobs:
     - name: Install WiX (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        choco install wixtoolset -y
+        choco install wix --version 3.11.2 -y
+        echo "C:\Program Files (x86)\WiX Toolset v3.11\bin" >> $GITHUB_PATH
 
     - name: Install dependencies (macOS)
       if: matrix.os == 'macos-latest'
@@ -69,14 +70,24 @@ jobs:
       run: |
         cd build
         if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
-          cpack -G "DEB;RPM" || echo "Linux package generation failed"
-          cp *.deb *.rpm packages/ 2>/dev/null || true
+          cpack -G "DEB;RPM" || (echo "Linux package generation failed" && exit 1)
+          cp *.deb *.rpm packages/ || true
         elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-          cpack -G "WIX" || echo "Windows package generation failed"
-          cp *.msi packages/ 2>/dev/null || true
+          cpack -V -G "WIX" --debug || (echo "Windows package generation failed" && exit 1)
+          cp *.msi packages/ || (echo "No MSI file generated" && exit 1)
         else
-          cpack -G "DragNDrop" || echo "macOS package generation failed"
-          cp *.dmg packages/ 2>/dev/null || true
+          cpack -G "DragNDrop" || (echo "macOS package generation failed" && exit 1)
+          cp *.dmg packages/ || true
+        fi
+
+    - name: Verify MSI file
+      if: matrix.os == 'windows-latest'
+      shell: bash
+      run: |
+        if [ ! -f build/packages/*.msi ]; then
+          echo "::error::MSI file was not generated!"
+          ls -la build/packages/
+          exit 1
         fi
 
     - name: Create source archives
