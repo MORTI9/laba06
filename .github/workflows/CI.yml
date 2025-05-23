@@ -1,4 +1,4 @@
-name: Create Release
+\name: Create Release
 
 on:
   push:
@@ -27,16 +27,13 @@ jobs:
       run: |
         mkdir -p build/packages
         mkdir -p assets
-        # Создаем простой License.rtf с ASCII символами
         echo "{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1033{\fonttbl{\f0\fnil\fcharset0 Calibri;}}\viewkind4\uc1\pard\f0\fs22 MIT License\par }" > License.rtf
-        # Создаем простые иконки
         if [ ! -f assets/background.png ]; then
           convert -size 640x480 xc:white assets/background.png
         fi
         if [ ! -f assets/icon.ico ]; then
           convert -size 256x256 xc:black assets/icon.ico
         fi
-        # Создаем WixTemplate.wxs
         cat << 'EOF' > WixTemplate.wxs
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
