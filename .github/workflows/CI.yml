@@ -39,10 +39,10 @@ jobs:
       with:
         vs-version: '17.0'
 
-    - name: Install WiX (Windows)
+    - name: Install WiX Toolset
       if: matrix.os == 'windows-latest'
       run: |
-        choco install wixtoolset -y
+        choco install wixtoolset -y --no-progress
 
     - name: Install dependencies (macOS)
       if: matrix.os == 'macos-latest'
@@ -70,13 +70,14 @@ jobs:
         cd build
         if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
           cpack -G "DEB;RPM" || echo "Linux package generation failed"
-          cp *.deb *.rpm packages/ 2>/dev/null || true
+          cp *.deb *.rpm packages/ || true
         elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-          cpack -G "WIX" || echo "Windows package generation failed"
-          cp *.msi packages/ 2>/dev/null || true
+          cmake --install . --prefix=install_dir
+          cpack -G WIX -C Release -DCPACK_WIX_UPGRADE_GUID="YOUR-UPGRADE-GUID" || echo "Windows package generation failed"
+          cp *.msi packages/ || true
         else
           cpack -G "DragNDrop" || echo "macOS package generation failed"
-          cp *.dmg packages/ 2>/dev/null || true
+          cp *.dmg packages/ || true
         fi
 
     - name: Create source archives
