@@ -23,9 +23,11 @@ jobs:
       shell: bash
       run: |
         mkdir -p build/packages
-        # Создаем минимальный License.rtf если его нет
         if [ ! -f License.rtf ]; then
-          echo "{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1049{\fonttbl{\f0\fnil\fcharset0 Calibri;}}\viewkind4\uc1\pard\f0\fs22 MIT License\par }" > License.rtf
+          echo "{\rtf1\ansi\ansicpg1251\deff0\nouicompat\deflang1049{\fonttbl{\f0\fnil\fcharset204 Calibri;}}\viewkind4\uc1\pard\f0\fs22\lang1049 MIT License\par }" > License.rtf
+        fi
+        if [ ! -f WixCultureFix.wxs ]; then
+          echo '<?xml version="1.0" encoding="UTF-8"?><Wix xmlns="http://schemas.microsoft.com/wix/2006/wi"><Product Codepage="1251"></Product></Wix>' > WixCultureFix.wxs
         fi
 
     - name: Install dependencies (Linux)
@@ -43,21 +45,13 @@ jobs:
     - name: Install WiX Toolset (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        # Устанавливаем WiX (пропускаем если уже установлен)
         choco install wixtoolset -y --no-progress --ignore-detected-reboot
-        
-        # Находим актуальный путь к WiX
         $wixPath = if (Test-Path "C:\Program Files (x86)\WiX Toolset v3.14\bin") {
           "C:\Program Files (x86)\WiX Toolset v3.14\bin"
         } else {
           "C:\Program Files (x86)\WiX Toolset v3.11\bin"
         }
-        
-        # Добавляем путь в переменные окружения
         echo "$wixPath" >> $env:GITHUB_PATH
-        echo "WiX path: $wixPath"
-        
-        # Проверяем установку
         & "$wixPath\candle.exe" -version
 
     - name: Install dependencies (macOS)
@@ -80,14 +74,6 @@ jobs:
       run: |
         cmake --build build --config Release --parallel 4
 
-    - name: Verify build files (Windows)
-      if: matrix.os == 'windows-latest'
-      shell: cmd
-      run: |
-        cd build
-        echo "=== Built files ==="
-        dir /s /b Release
-
     - name: Generate packages
       shell: bash
       run: |
@@ -96,22 +82,16 @@ jobs:
           cpack -G "DEB;RPM" || (echo "Linux package generation failed" && exit 1)
           cp *.deb *.rpm packages/ || true
         elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-          # Генерируем MSI с подробным логом
           cpack -V -G "WIX" --debug || (
             echo "::error::Windows package generation failed"
-            echo "=== WiX log ==="
             cat _CPack_Packages/win64/WIX/wix.log || true
             exit 1
           )
-          
-          # Проверяем что MSI создан
           if [ -z "$(ls -A *.msi 2>/dev/null)" ]; then
             echo "::error::No MSI files generated!"
-            echo "=== Directory contents ==="
             ls -la
             exit 1
           fi
-          
           mkdir -p packages
           cp *.msi packages/
         else

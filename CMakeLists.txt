@@ -17,11 +17,11 @@ if(UNIX AND NOT APPLE)
     set(CPACK_RPM_PACKAGE_REQUIRES "libfmt-devel")
 endif()
 
-# Настройки для Windows (без WixTemplate)
+# Настройки для Windows
 if(WIN32)
     set(CPACK_GENERATOR "WIX")
     
-    # Автогенерация GUID
+    # Генерация уникальных GUID
     string(TIMESTAMP CURRENT_YEAR "%Y")
     string(UUID CPACK_WIX_PRODUCT_GUID 
         NAMESPACE "00000000-0000-0000-0000-000000000000" 
@@ -33,13 +33,12 @@ if(WIN32)
         TYPE SHA1)
     
     set(CPACK_WIX_LICENSE_RTF "${CMAKE_CURRENT_SOURCE_DIR}/License.rtf")
-    set(CPACK_WIX_CULTURES "en-US")
+    set(CPACK_WIX_CULTURES "en-US;ru-RU")
     set(CPACK_WIX_ARCHITECTURE "x64")
-    
-    # Минимальные необходимые настройки
     set(CPACK_WIX_PRODUCT_ICON "${CMAKE_CURRENT_SOURCE_DIR}/assets/icon.ico")
     set(CPACK_WIX_UI_REF "WixUI_InstallDir")
     set(CPACK_WIX_EXTENSIONS "WixUtilExtension")
+    set(CPACK_WIX_TEMPLATE "${CMAKE_CURRENT_SOURCE_DIR}/WixCultureFix.wxs")
 endif()
 
 # Настройки для macOS
