@@ -2,10 +2,10 @@ name: CMake Build
 
 on:
   push:
-    branches: [main]
+    branches: [master]
     tags: ['*']  # Добавляем триггер на тэги
   pull_request:
-    branches: [main]
+    branches: [master]
 
 jobs:
   build:
