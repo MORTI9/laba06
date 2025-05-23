@@ -38,8 +38,8 @@ jobs:
       uses: microsoft/setup-msbuild@v2
       with:
         vs-version: '17.0'
-
-    - name: Install WiX Toolset
+      
+    - name: Install WiX (Windows)
       if: matrix.os == 'windows-latest'
       run: |
         choco install wixtoolset -y --no-progress
@@ -48,7 +48,7 @@ jobs:
       if: matrix.os == 'macos-latest'
       run: |
         brew update
-        brew install cmake fmt
+        brew install --formula cmake fmt
 
     - name: Configure project
       shell: bash
@@ -64,25 +64,38 @@ jobs:
       run: |
         cmake --build build --config Release --parallel 4
 
-    - name: Generate packages
+    - name: Generate packages (Linux)
+      if: matrix.os == 'ubuntu-latest'
       shell: bash
       run: |
         cd build
-        if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
-          cpack -G "DEB;RPM" || echo "Linux package generation failed"
-          cp *.deb *.rpm packages/ || true
-        elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
-          cmake --install . --prefix=install_dir
-          cpack -G WIX -C Release -DCPACK_WIX_UPGRADE_GUID="YOUR-UPGRADE-GUID" || echo "Windows package generation failed"
-          cp *.msi packages/ || true
-        else
-          cpack -G "DragNDrop" || echo "macOS package generation failed"
-          cp *.dmg packages/ || true
-        fi
+        cpack -G "DEB;RPM"
+        mkdir -p packages
+        cp *.deb *.rpm packages/
+
+    - name: Generate packages (Windows)
+      if: matrix.os == 'windows-latest'
+      shell: bash
+      run: |
+        cd build
+        cmake --install . --prefix=install_dir
+        cpack -G WIX -C Release
+        mkdir -p packages
+        cp *.msi packages/
+
+    - name: Generate packages (macOS)
+      if: matrix.os == 'macos-latest'
+      shell: bash
+      run: |
+        cd build
+        cpack -G "DragNDrop"
+        mkdir -p packages
+        cp *.dmg packages/
 
     - name: Create source archives
       shell: bash
       run: |
+        mkdir -p build/packages
         git archive --format=zip -o build/packages/source-code.zip HEAD
         git archive --format=tar.gz -o build/packages/source-code.tar.gz HEAD
 
@@ -104,11 +117,11 @@ jobs:
 
     - name: Combine artifacts
       run: |
-        mkdir -p combined-packages
-        find artifacts -type f -exec cp {} combined-packages/ \;
-        ls -la combined-packages/
+        mkdir -p release-assets
+        find artifacts -type f -exec cp {} release-assets/ \;
+        ls -la release-assets/
 
-    - name: Create or Update Release
+    - name: Create Release
       uses: softprops/action-gh-release@v1
       with:
         tag_name: ${{ github.ref_name }}
@@ -119,9 +132,5 @@ jobs:
           - Windows (.msi)
           - macOS (.dmg)
           - Source code archives
-        draft: false
-        prerelease: false
-        files: |
-          combined-packages/*
+        files: release-assets/*
         token: ${{ secrets.GITHUB_TOKEN }}
-        update: true
