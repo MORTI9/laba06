@@ -3,7 +3,7 @@ name: Create Release
 on:
   push:
     tags:
-      - 'v*' # Запускать workflow при создании тэга, начинающегося с 'v'
+      - 'v*' # Запускать workflow при создании тега
 
 jobs:
   build:
@@ -17,22 +17,13 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Verify LICENSE exists (Linux/macOS)
-      if: matrix.os != 'windows-latest'
+    - name: Verify files exist
+      shell: bash
       run: |
-        if [ ! -f LICENSE ]; then
-          echo "::error::LICENSE file is required!"
+        if [ ! -f LICENSE ] || [ ! -f License.rtf ]; then
+          echo "::error::LICENSE and License.rtf files are required!"
           exit 1
         fi
-
-    - name: Verify LICENSE exists (Windows)
-      if: matrix.os == 'windows-latest'
-      shell: pwsh
-      run: |
-        if (!(Test-Path -Path LICENSE)) {
-          Write-Error "LICENSE file is required!"
-          exit 1
-        }
 
     - name: Install dependencies (Linux)
       if: matrix.os == 'ubuntu-latest'
@@ -43,7 +34,8 @@ jobs:
           g++ \
           make \
           libfmt-dev \
-          rpm
+          rpm \
+          wixl
 
     - name: Install dependencies (Windows)
       if: matrix.os == 'windows-latest'
@@ -76,7 +68,13 @@ jobs:
       shell: bash
       run: |
         cd build
-        cpack -G ${{ matrix.os == 'ubuntu-latest' && 'DEB;RPM' || matrix.os == 'windows-latest' && 'WIX' || matrix.os == 'macos-latest' && 'DragNDrop' }}
+        if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+          cpack -G "DEB;RPM"
+        elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+          cpack -G WIX -C ${{ matrix.build_type }}
+        else
+          cpack -G DragNDrop
+        fi
 
     - name: Create source archives
       shell: bash
