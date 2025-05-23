@@ -41,7 +41,7 @@ jobs:
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
     <Product Id="*" Name="Solver" Language="1033" Version="1.0.0" Manufacturer="YourCompany" UpgradeCode="12345678-1234-1234-1234-123456789012">
-        <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" Manufacturer="YourCompany" Description="Solver Application" Comments="Copyright YourCompany" Languages="1033" Codepage="1252"/>
+        <Package InstallerVersion="200" Compressed="yes" InstallScope="perMachine" Manufacturer="YourCompany" Description="Solver Application" Comments="Copyright YourCompany" Languages="1033"/>
         <MajorUpgrade AllowSameVersionUpgrades="yes" DowngradeErrorMessage="A newer version is already installed." AllowDowngrades="no"/>
         <MediaTemplate EmbedCab="yes"/>
         <Feature Id="ProductFeature" Title="Solver" Level="1">
@@ -176,3 +176,4 @@ EOF
           - Source code archives
         files: release-assets/*
         token: ${{ secrets.GITHUB_TOKEN }}
+
