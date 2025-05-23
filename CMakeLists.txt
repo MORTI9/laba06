@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10...3.27)
 project(MyProject VERSION 1.0.0 LANGUAGES CXX)
 
-# Настройки CPack
+# Общие настройки CPack
 set(CPACK_PACKAGE_NAME "solver")
 set(CPACK_PACKAGE_VENDOR "YourCompany")
 set(CPACK_PACKAGE_CONTACT "contact@yourcompany.com")
@@ -20,14 +20,15 @@ endif()
 # Настройки для Windows
 if(WIN32)
     set(CPACK_GENERATOR "WIX")
-    set(CPACK_WIX_PRODUCT_GUID "PUT-YOUR-GUID-HERE-1234")
-    set(CPACK_WIX_UPGRADE_GUID "PUT-YOUR-GUID-HERE-5678")
+    set(CPACK_WIX_PRODUCT_GUID "YOUR-WINDOWS-GUID-HERE") # Замените на реальный GUID
+    set(CPACK_WIX_UPGRADE_GUID "YOUR-UPGRADE-GUID-HERE") # Замените на реальный GUID
     set(CPACK_WIX_LICENSE_RTF "${CMAKE_CURRENT_SOURCE_DIR}/License.rtf")
 endif()
 
 # Настройки для macOS
 if(APPLE)
     set(CPACK_GENERATOR "DragNDrop")
+    set(CPACK_DMG_VOLUME_NAME "Solver")
 endif()
 
 add_subdirectory(formatter_lib)

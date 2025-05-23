@@ -6,13 +6,13 @@ on:
       - 'v*'
 
 permissions:
-  contents: write  # Добавляем явные права на запись
+  contents: write
 
 jobs:
   build:
     strategy:
       matrix:
-        os: [ubuntu-latest]
+        os: [ubuntu-latest, windows-latest, macos-latest]
         build_type: [Release]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
@@ -28,31 +28,64 @@ jobs:
           echo "{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1049{\fonttbl{\f0\fnil\fcharset0 Calibri;}}\viewkind4\uc1\pard\f0\fs22 MIT License\par }" > License.rtf
         fi
 
-    - name: Install dependencies
+    - name: Install dependencies (Linux)
+      if: matrix.os == 'ubuntu-latest'
       run: |
         sudo apt-get update
         sudo apt-get install -y cmake g++ make libfmt-dev rpm
 
-    - name: Configure project
+    - name: Install dependencies (Windows)
+      if: matrix.os == 'windows-latest'
+      uses: microsoft/setup-msbuild@v2
+      with:
+        vs-version: '17.0'
+
+    - name: Install dependencies (macOS)
+      if: matrix.os == 'macos-latest'
       run: |
-        cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+        brew update
+        brew install cmake fmt
+
+    - name: Configure project
+      shell: bash
+      run: |
+        if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+          cmake -S . -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=Release
+        else
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+        fi
 
     - name: Build project
+      shell: bash
       run: |
         cmake --build build --config Release --parallel 4
 
     - name: Generate packages
+      shell: bash
       run: |
         cd build
-        cpack -G "DEB;RPM" || echo "Package generation failed"
+        if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
+          cpack -G "DEB;RPM" || echo "Linux package generation failed"
+        elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+          cpack -G "WIX" || echo "Windows package generation failed"
+        else
+          cpack -G "DragNDrop" || echo "macOS package generation failed"
+        fi
         mkdir -p packages
-        cp *.deb *.rpm packages/ || true
+        cp *.{deb,rpm,msi,dmg} packages/ 2>/dev/null || true
 
     - name: Create source archives
+      shell: bash
       run: |
         mkdir -p build/packages
         git archive --format=zip -o build/packages/source-code.zip HEAD
         git archive --format=tar.gz -o build/packages/source-code.tar.gz HEAD
+
+    - name: Verify artifacts
+      shell: bash
+      run: |
+        echo "Generated artifacts:"
+        ls -la build/packages/
 
     - name: Create Release
       uses: ncipollo/release-action@v1
@@ -62,3 +95,5 @@ jobs:
         name: Release ${{ github.ref_name }}
         artifacts: "build/packages/*"
         token: ${{ secrets.GITHUB_TOKEN }}
+        draft: false
+        prerelease: false
