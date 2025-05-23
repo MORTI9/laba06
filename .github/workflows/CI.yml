@@ -23,6 +23,7 @@ jobs:
       shell: bash
       run: |
         mkdir -p build/packages
+        # Создаем минимальные необходимые файлы если их нет
         if [ ! -f License.rtf ]; then
           echo "{\rtf1\ansi\ansicpg1251\deff0\nouicompat\deflang1049{\fonttbl{\f0\fnil\fcharset204 Calibri;}}\viewkind4\uc1\pard\f0\fs22\lang1049 MIT License\par }" > License.rtf
         fi
@@ -69,34 +70,76 @@ jobs:
           cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
         fi
 
+    - name: Verify CPack configuration
+      shell: bash
+      run: |
+        cd build
+        echo "=== CPack configuration ==="
+        cmake -L | grep CPACK
+        echo "=== Project info ==="
+        grep "project(" ../CMakeLists.txt
+
     - name: Build project
       shell: bash
       run: |
         cmake --build build --config Release --parallel 4
+
+    - name: Verify build files
+      shell: bash
+      run: |
+        cd build
+        echo "=== Built files ==="
+        if [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+          find . -name "*.exe" -o -name "*.dll"
+        else
+          find . -type f -executable -print
+        fi
 
     - name: Generate packages
       shell: bash
       run: |
         cd build
         if [[ "${{ matrix.os }}" == "ubuntu-latest" ]]; then
-          cpack -G "DEB;RPM" || (echo "Linux package generation failed" && exit 1)
-          cp *.deb *.rpm packages/ || true
+          # Генерация Linux пакетов
+          cpack -G "DEB;RPM" -V --debug || (
+            echo "::error::Linux package generation failed"
+            ls -la _CPack*
+            exit 1
+          )
+          mkdir -p packages
+          cp *.deb *.rpm packages/ || echo "No packages copied"
+          
+          if [ -z "$(ls -A packages/*.deb 2>/dev/null)" ] && [ -z "$(ls -A packages/*.rpm 2>/dev/null)" ]; then
+            echo "::error::No DEB/RPM packages generated!"
+            ls -la
+            exit 1
+          fi
+
         elif [[ "${{ matrix.os }}" == "windows-latest" ]]; then
+          # Генерация Windows MSI
           cpack -V -G "WIX" --debug || (
             echo "::error::Windows package generation failed"
             cat _CPack_Packages/win64/WIX/wix.log || true
             exit 1
           )
+          
           if [ -z "$(ls -A *.msi 2>/dev/null)" ]; then
             echo "::error::No MSI files generated!"
             ls -la
             exit 1
           fi
+          
           mkdir -p packages
           cp *.msi packages/
+
         else
-          cpack -G "DragNDrop" || (echo "macOS package generation failed" && exit 1)
-          cp *.dmg packages/ || true
+          # Генерация macOS DMG
+          cpack -G "DragNDrop" -V --debug || (
+            echo "::error::macOS package generation failed"
+            exit 1
+          )
+          mkdir -p packages
+          cp *.dmg packages/ || echo "No DMG packages copied"
         fi
 
     - name: Create source archives
