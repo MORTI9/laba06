@@ -27,9 +27,9 @@ jobs:
       run: |
         mkdir -p build/packages
         mkdir -p assets
-        if [ ! -f License.rtf ]; then
-          echo "{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1049{\fonttbl{\f0\fnil\fcharset0 Calibri;}}\viewkind4\uc1\pard\f0\fs22 MIT License\par }" > License.rtf
-        fi
+        # Создаем простой License.rtf с ASCII символами
+        echo "{\rtf1\ansi\ansicpg1252\deff0\nouicompat\deflang1033{\fonttbl{\f0\fnil\fcharset0 Calibri;}}\viewkind4\uc1\pard\f0\fs22 MIT License\par }" > License.rtf
+        # Создаем простые иконки
         if [ ! -f assets/background.png ]; then
           convert -size 640x480 xc:white assets/background.png
         fi
@@ -58,6 +58,12 @@ jobs:
         echo "C:\wix" | Out-File -FilePath $env:GITHUB_PATH -Append
         echo "WIX_ROOT=C:\wix" | Out-File -FilePath $env:GITHUB_ENV -Append
 
+    - name: Install dependencies (macOS)
+      if: matrix.os == 'macos-latest'
+      run: |
+        brew update
+        brew install cmake fmt imagemagick
+
     - name: Configure project (Windows)
       if: matrix.os == 'windows-latest'
       shell: bash
@@ -82,7 +88,7 @@ jobs:
         cd build
         cmake --install . --prefix=install_dir
         $env:Path += ";C:\wix"
-        cpack -G WIX -C Release -DCPACK_WIX_ROOT=C:/wix --debug --verbose
+        cpack -G WIX -C Release -DCPACK_WIX_ROOT=C:/wix -DCPACK_WIX_CULTURES="en-US" -DCPACK_WIX_PRODUCT_GUID="D9FD9F0A-0D7B-4B1F-8E7A-1A3F4B2C5D6E" -DCPACK_WIX_UPGRADE_GUID="3A4B5C6D-7E8F-9A0B-1C2D-3E4F5A6B7C8D" --debug --verbose
         if ($LASTEXITCODE -ne 0) {
           Get-Content _CPack_Packages/win64/WIX/wix.log
           exit 1

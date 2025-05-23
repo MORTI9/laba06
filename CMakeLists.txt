@@ -18,8 +18,14 @@ if(WIN32)
     set(CPACK_WIX_CULTURES "en-US")
     set(CPACK_WIX_ARCHITECTURE "x64")
     set(CPACK_WIX_PRODUCT_ICON "${CMAKE_CURRENT_SOURCE_DIR}/assets/icon.ico")
+    set(CPACK_WIX_UI_BANNER "${CMAKE_CURRENT_SOURCE_DIR}/assets/banner.bmp")
+    set(CPACK_WIX_UI_DIALOG "${CMAKE_CURRENT_SOURCE_DIR}/assets/dialog.bmp")
     
- 
+    
+    set(CPACK_WIX_CULTURES "en-US")
+    set(CPACK_WIX_TEMPLATE "${CMAKE_CURRENT_SOURCE_DIR}/WixTemplate.wxs")
+    
+    
     if(DEFINED WIX_ROOT)
         set(CPACK_WIX_ROOT "${WIX_ROOT}")
         set(ENV{PATH} "${WIX_ROOT};$ENV{PATH}")
